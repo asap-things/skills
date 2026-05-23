@@ -4,7 +4,6 @@
 
 ```typescript
 // src/index.ts
-import 'reflect-metadata';  // 반드시 첫 번째 줄
 import { Application } from '@asapjs/core';
 import config from './config';
 
@@ -13,7 +12,8 @@ new Application(__dirname, config).run();
 
 ### 핵심 포인트
 
-- `reflect-metadata`는 반드시 첫 번째 import
+- `@asapjs/sequelize` 사용 시 `reflect-metadata`는 자동 import됨 (별도 import 불필요)
+- sequelize 없이 데코레이터를 사용하는 경우에만 `import 'reflect-metadata'`를 첫 줄에 추가
 - `__dirname`은 자동 탐색의 루트 경로 (route.ts, *Table.ts, *Dto.ts 스캔 기준)
 - `app.run(callback)`의 callback은 서버 시작 후 실행
 - 설정은 별도 `config.ts` 파일로 분리 권장
@@ -277,7 +277,6 @@ Winston 기반. `ASAPJS_LOG_LEVEL` (debug/info/warn/error), `ASAPJS_LOG_FORMAT` 
 Fastify 어댑터를 사용하는 경우 `FastifyApplication`을 사용합니다:
 
 ```typescript
-import 'reflect-metadata';
 import { FastifyApplication } from '@asapjs/fastify';
 import config from './config';
 
@@ -285,3 +284,42 @@ new FastifyApplication(__dirname, config).run();
 ```
 
 상세 내용은 `fastify-patterns.md` 참조.
+
+## Application 라이프사이클 메서드
+
+| 메서드 | 반환 타입 | 설명 |
+|--------|----------|------|
+| `run(initBeforeStartServer?, options?)` | `Promise<express.Application>` | 서버 시작. 콜백으로 시작 전 추가 설정 가능 |
+| `getApp()` | `express.Application` | Express 인스턴스 반환 |
+| `getServer()` | `http.Server` | 내부 Node.js HTTP 서버 반환 |
+| `destroy()` | `Promise<void>` | 플러그인 역순 정리 후 서버 종료 |
+
+### run() 옵션
+
+```typescript
+// 기본 사용
+new Application(__dirname, config).run();
+
+// 서버 시작 전 콜백
+new Application(__dirname, config).run(async () => {
+  await modelsSync();
+});
+
+// 서버 리스닝 비활성화 (테스트/서버리스 환경)
+const app = new Application(__dirname, config);
+await app.run(undefined, { disableListenServer: true });
+const expressApp = app.getApp();  // Express 인스턴스 직접 사용
+```
+
+### destroy() — Graceful Shutdown
+
+```typescript
+const app = new Application(__dirname, config);
+await app.run();
+
+// 종료 시
+process.on('SIGTERM', async () => {
+  await app.destroy();  // 플러그인 역순 정리 → 서버 종료
+  process.exit(0);
+});
+```

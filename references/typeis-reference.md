@@ -30,7 +30,6 @@ import { DataTypes } from 'sequelize';  // TypeIs를 사용하세요
 | `TypeIs.DATETIME(opts)` | `DATE` | `string (date-time)` | 그대로 반환 | 날짜+시간 |
 | `TypeIs.ENUM(opts)` | `ENUM(values)` | `string (enum)` | `String(o)` | `values` 필수 |
 | `TypeIs.JSON(opts)` | `JSON` | `object` | 그대로 반환 | |
-| `TypeIs.BASE64(opts)` | `TEXT` | `string (byte)` | `String(o)` | |
 | `TypeIs.BINARY(opts)` | `BLOB` | `string (binary)` | 그대로 반환 | |
 
 ## 공통 옵션

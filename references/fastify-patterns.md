@@ -27,7 +27,7 @@
 `FastifyApplication`은 Express의 `Application` 클래스에 대응합니다. Fastify 인스턴스 생성, 플러그인 초기화, 서버 시작을 담당합니다.
 
 ```typescript
-import FastifyApplication from '@asapjs/fastify';
+import { FastifyApplication } from '@asapjs/fastify';
 import type { AsapJSConfig } from '@asapjs/types';
 
 const config: AsapJSConfig = {

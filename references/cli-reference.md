@@ -260,16 +260,20 @@ export default class UserController extends RouterController {
 
 ```typescript
 import { RouterController, Get, Post, Put, Delete, ExecuteArgs } from '@asapjs/router';
+import { UserApplication } from '../application/UserApplication';
 import UserDto from '../dto/UserDto';
 import CreateUserDto from '../dto/CreateUserDto';
+import GetUserListQueryDto from '../dto/GetUserListQueryDto';
 
 export default class UserController extends RouterController {
   public basePath = '/users';
   public tag = 'users';
+  private userService: UserApplication;
 
   constructor() {
     super();
     this.registerRoutes();
+    this.userService = new UserApplication();
   }
 
   @Get('/', {
@@ -285,8 +289,8 @@ export default class UserController extends RouterController {
     title: '사용자 상세 조회',
     response: UserDto,
   })
-  public getById = async ({ path }: ExecuteArgs<{}, { id: string }, {}>) => {
-    return { result: await this.userService.info(Number(path.id)) };
+  public getById = async ({ path }: ExecuteArgs<{ id: string }, {}, {}>) => {
+    return { result: await this.userService.info(Number(path?.id)) };
   };
 
   @Post('/', {
@@ -304,14 +308,14 @@ export default class UserController extends RouterController {
 
 | 문제 | 생성기 출력 | 올바른 패턴 |
 |------|-----------|------------|
-| 잘못된 import 경로 | `import { TypeIs } from '@asapjs/sequelize'` | `import { TypeIs } from '@asapjs/schema'` |
+| TypeIs import 경로 | `import { TypeIs } from '@asapjs/sequelize'` | `import { TypeIs } from '@asapjs/schema'` |
 | 존재하지 않는 `required` 옵션 | `@TypeIs.STRING({ required: true })` | `@TypeIs.STRING({ allowNull: false })` 또는 옵션 생략 |
-| `Dto`, `ExtendableDto` import | `from '@asapjs/sequelize'` | `from '@asapjs/schema'` |
+| 한 줄 import | `import { Dto, ExtendableDto, TypeIs } from '@asapjs/sequelize'` | TypeIs만 분리: `import { TypeIs } from '@asapjs/schema'` + `import { Dto, ExtendableDto } from '@asapjs/sequelize'` |
 
 **생성기 출력 (버그 포함):**
 
 ```typescript
-import { Dto, ExtendableDto, TypeIs } from '@asapjs/sequelize';  // ❌ @asapjs/schema에서 import해야 함
+import { Dto, ExtendableDto, TypeIs } from '@asapjs/sequelize';  // ❌ TypeIs는 @asapjs/schema에서 import해야 함
 
 @Dto({ name: 'user_dto' })
 export default class UserDto extends ExtendableDto {
@@ -338,9 +342,11 @@ export class CreateUserDto extends ExtendableDto {
 **올바른 패턴:**
 
 ```typescript
-import { Dto, ExtendableDto, TypeIs } from '@asapjs/schema';
+import { Dto, ExtendableDto } from '@asapjs/sequelize';
+import { TypeIs } from '@asapjs/schema';
+import UsersTable from '../domain/entity/UsersTable';
 
-@Dto({ name: 'user_dto' })
+@Dto({ name: 'user_dto', defineTable: UsersTable })
 export default class UserDto extends ExtendableDto {
   @TypeIs.INT({ comment: 'ID' })
   id: number;

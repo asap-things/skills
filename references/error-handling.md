@@ -102,7 +102,7 @@ public createUser = async ({ body, user }: ExecuteArgs<{}, {}, CreateUserDto>) =
 import { HttpException } from '@asapjs/router';
 
 throw new HttpException(404, 'Post not found');
-// → HTTP 404 { status: 404, errorCode: 'LEGACY_HTTP_EXCEPTION', message: 'Post not found' }
+// → HTTP 404 { status: 404, errorCode: 'HTTP_EXCEPTION', message: 'Post not found' }
 ```
 
 ## 에러 응답 형식
@@ -114,7 +114,7 @@ throw new HttpException(404, 'Post not found');
 
 ### HttpException (레거시)
 ```json
-{ "status": 404, "errorCode": "LEGACY_HTTP_EXCEPTION", "message": "Post not found" }
+{ "status": 404, "errorCode": "HTTP_EXCEPTION", "message": "Post not found" }
 ```
 
 ### 일반 Error (500)
@@ -133,18 +133,30 @@ isServerError 판별 (status === 500 || undefined)
   ↓ (서버 에러인 경우)
 logger.error + Sentry.captureException (설정 시)
   ↓
-errorToResponse(err, res) → resolveErrorBody(err)
+HttpError/HttpException/Error 분기 처리
   ↓
 HTTP 응답 전송
 ```
 
-### resolveErrorBody 분기
+### Wrapper 에러 분기 (Express — 기본 경로)
+
+| 에러 유형 | 조건 | 응답 형식 |
+|----------|------|----------|
+| `HttpError` | `instanceof HttpError` | `{ status, errorCode, message, data? }` |
+| `HttpException` | `status` + `message` 있음 | `{ status, errorCode: 'HTTP_EXCEPTION', message }` |
+| 일반 에러 | 위 조건 해당 없음 | `{ status: 500, errorCode: 'INTERNAL_SERVER_ERROR', message }` |
+
+### resolveErrorBody 분기 (effectErrorHandler 경로)
+
+`wrapWithEffect()` 사용 시 또는 `effectErrorHandler` 미들웨어를 통과할 때:
 
 | 에러 유형 | 조건 | 응답 형식 |
 |----------|------|----------|
 | `HttpError` | `instanceof HttpError` | `{ status, errorCode, message, data? }` |
 | `HttpException` | `status` + `message` 있고 `errorCode` 없음 | `{ status, errorCode: 'LEGACY_HTTP_EXCEPTION', message }` |
 | 일반 에러 | 위 조건 해당 없음 | `{ status: 500, errorCode: 'INTERNAL_SERVER_ERROR', message }` |
+
+> ⚠️ Express Wrapper와 `resolveErrorBody()`는 HttpException에 대해 다른 errorCode를 사용합니다. Wrapper는 `'HTTP_EXCEPTION'`, resolveErrorBody는 `'LEGACY_HTTP_EXCEPTION'`입니다. 실제 대부분의 요청은 Wrapper를 통과하므로 `'HTTP_EXCEPTION'`이 반환됩니다.
 
 ## 미들웨어에서 에러 선언
 

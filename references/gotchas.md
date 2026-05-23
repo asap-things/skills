@@ -66,11 +66,14 @@ user_id: number;
 ### reflect-metadata 미임포트
 
 ```typescript
-// ❌ 데코레이터 메타데이터 동작 안함
+// ❌ sequelize 없이 데코레이터 사용 시 — 메타데이터 동작 안함
 import { Application } from '@asapjs/core';
 
-// ✅ 반드시 첫 번째 줄에
+// ✅ sequelize 미사용 프로젝트에서만 직접 import 필요
 import 'reflect-metadata';
+import { Application } from '@asapjs/core';
+
+// ✅ @asapjs/sequelize 사용 시 — 자동 import되므로 생략 가능
 import { Application } from '@asapjs/core';
 ```
 

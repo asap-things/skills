@@ -73,9 +73,12 @@ One definition generates DB schema + Swagger docs + runtime coercion simultaneou
    @TypeIs.FOREIGNKEY({ table: UsersTable })         // ❌ circular ref risk
    ```
 
-8. **`reflect-metadata` must be the first import in entry point:**
+8. **`reflect-metadata`는 `@asapjs/sequelize` 사용 시 자동 import됨:**
    ```typescript
-   import 'reflect-metadata';  // Line 1
+   // @asapjs/sequelize가 내부적으로 import 'reflect-metadata'를 수행
+   // 따라서 사용자가 직접 import하지 않아도 동작하지만,
+   // sequelize 없이 데코레이터를 사용하는 경우 직접 import 필요:
+   import 'reflect-metadata';  // sequelize 미사용 시에만 필수
    ```
 
 ## Import Map
@@ -147,6 +150,10 @@ src/
 
 ```typescript
 import { RouterController, Get, ExecuteArgs } from '@asapjs/router';
+import { PaginationQueryDto } from '@asapjs/sequelize';
+import { TypeIs } from '@asapjs/schema';
+import { UserApplication } from '../application/UserApplication';
+import UserDto from '../dto/UserDto';
 
 export default class UserController extends RouterController {
   public basePath = '/users';
@@ -212,7 +219,6 @@ export class UserErrors {
 ### Entry Point
 
 ```typescript
-import 'reflect-metadata';
 import { Application } from '@asapjs/core';
 import config from './config';
 
