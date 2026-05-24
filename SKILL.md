@@ -350,3 +350,31 @@ export class UserErrors {
 - Do NOT import `TypeIs` from `@asapjs/sequelize` — always use `@asapjs/schema`
 - Do NOT use `TypeIs.OBJECT` — it does not exist. For nested objects, create a separate `*Dto.ts` file with `@Dto` decorator and use `TypeIs.DTO({ dto: MyDto })` instead
 - Do NOT put multiple DTOs in one file — each DTO must be in its own `*Dto.ts` file for auto-discovery to work
+- Do NOT define separate interface types for Application method parameters — use `DtoData<RequestDto>` to derive the type directly from the DTO class
+- Do NOT name Application method parameters `input` — always use `body` to match the request body semantics
+
+## Application Method Typing Convention (MANDATORY)
+
+Application 메서드의 파라미터는 반드시 `DtoData<RequestDto>` 형태로 타이핑하고, 파라미터명은 `body`를 사용한다.
+별도 interface를 만들지 않는다 — DTO가 이미 body 구조를 정의하고 있으므로 중복이다.
+
+```typescript
+import type { DtoData } from '@asapjs/sequelize'
+import type CreateUserRequestDto from '../dto/CreateUserRequestDto'
+
+export class UserApplication {
+  // ✅ CORRECT: DtoData<Dto> + body 파라미터명
+  public async create (body: DtoData<CreateUserRequestDto>) {
+    // body.email, body.name 등 DTO 필드에 직접 접근
+  }
+
+  // ❌ WRONG: 별도 interface 정의
+  // interface CreateUserInput { email: string; name: string; }
+  // public async create (input: CreateUserInput) { ... }
+}
+```
+
+**Why:**
+- DTO 변경 시 Application 파라미터 타입이 자동으로 동기화됨
+- 중복 interface 관리 불필요
+- Controller에서 `body`를 그대로 넘기므로 네이밍 일관성 유지
