@@ -280,6 +280,61 @@ Modes:
 - **Override**: `public responseDto = CustomDto` on controller
 - **Disable**: `public responseDto = null` on controller → raw output, no envelope
 
+### Error Envelope (@ErrorPayload)
+
+Add `@ErrorPayload()` to Global DTO to wrap error responses in the same envelope:
+
+```typescript
+import { AutoInject, ErrorPayload, ResponsePayload } from '@asapjs/router';
+
+export default class GlobalResponseDto extends ExtendableDto {
+  @AutoInject(() => Date.now()) timestamp: number;
+  @AutoInject((req) => req.headers['x-request-id'] || crypto.randomUUID()) requestId: string;
+  @AutoInject(() => true) success: boolean;
+
+  @ResponsePayload() result: any;
+
+  @TypeIs.JSON({ comment: '에러 정보', optional: true })
+  @ErrorPayload()
+  error: any;
+}
+// Error response: { timestamp, requestId, success: false, error: { status, errorCode, message, data } }
+// Without @ErrorPayload(): error returned raw { status, errorCode, message, data }
+```
+
+### Custom Error Factory (createErrorFactory)
+
+Create error factories with custom serialization and DTO for Swagger:
+
+```typescript
+import { createErrorFactory } from '@asapjs/error';
+
+class ErrorResponseDto extends ExtendableDto {
+  @TypeIs.INT({ comment: 'HTTP 상태 코드' }) status: number;
+  @TypeIs.STRING({ comment: '에러 코드' }) errorCode: string;
+  @TypeIs.STRING({ comment: '에러 메시지' }) message: string;
+  @TypeIs.JSON({ comment: '에러 상세', optional: true }) data: any;
+}
+
+const error = createErrorFactory({
+  dto: ErrorResponseDto,
+  serialize: ({ status, code, message, data }) => ({
+    status,
+    errorCode: code,
+    message,
+    data,
+  }),
+});
+
+// Usage (same as built-in error() factory):
+export class UserErrors {
+  static NOT_FOUND = error(404, 'USER_NOT_FOUND', 'User {userId} not found', {
+    userId: TypeIs.INT(),
+  });
+}
+// throw UserErrors.NOT_FOUND({ userId: 42 })
+```
+
 ## Do NOT (common AI hallucinations)
 
 - Do NOT use NestJS patterns (`@Controller`, `@Injectable`, `@Module`) — they don't exist
