@@ -29,6 +29,17 @@ export default class UserController extends RouterController {
 }
 ```
 
+> **Global Response DTO 사용 시**: `config.response.responseDto`가 설정된 프로젝트에서는
+> `return { result }` 대신 raw payload를 직접 반환해야 합니다.
+> Wrapper가 자동으로 envelope(`timestamp`, `requestId` 등)을 씌워줍니다.
+> ```typescript
+> // Global Response DTO 적용 시:
+> public getUserList = async ({ paging, user }) => {
+>   return await this.userService.list(paging, user);  // raw payload
+> };
+> ```
+> 컨트롤러 단위로 envelope을 비활성화하려면 `public responseDto = null;`을 선언합니다.
+
 ### registerRoutes() 호출 순서
 
 ```typescript

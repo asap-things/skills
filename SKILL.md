@@ -89,6 +89,7 @@ One definition generates DB schema + Swagger docs + runtime coercion simultaneou
 | Get, Post, Put, Delete, RouterController, ExecuteArgs | `@asapjs/router` |
 | defineMiddleware, defineRouterConfig, defineConfig, HttpException | `@asapjs/router` |
 | CreateExecuteArgs, GlobalMiddlewareContext, GlobalRouteOptions, IOptions | `@asapjs/router` |
+| AutoInject, ResponsePayload, ErrorPayload | `@asapjs/router` |
 | addPaths, addScheme, getSwaggerData, generateSchemeRefWithName | `@asapjs/router` |
 | FastifyRouterController, FastifyApplication, FastifyExecuteArgs | `@asapjs/fastify` |
 | TypeIs (all types), extendTypeIs, TypeIsInterface | `@asapjs/schema` |
@@ -100,7 +101,7 @@ One definition generates DB schema + Swagger docs + runtime coercion simultaneou
 | modelsSync, getSequelize, healthCheck, generateDBML | `@asapjs/sequelize` |
 | getDBMLData, getConsoleData, getUserIdInQuery | `@asapjs/sequelize` |
 | registerSequelizeTypes, getData, TypeIsData | `@asapjs/sequelize` |
-| error() factory | `@asapjs/error` |
+| error() factory, createErrorFactory() | `@asapjs/error` |
 | getConfig, logger | `@asapjs/common` |
 | createSocket, socketSendTo, socketSendAll, getSocketIO | `@asapjs/socket` |
 | TypedMiddleware, InferMiddlewareRouteOptions | `@asapjs/types` / `@asapjs/router` |
@@ -125,11 +126,14 @@ Load the appropriate reference file based on the task at hand:
 | Fastify | `references/fastify-patterns.md` | FastifyApplication, FastifyRouterController, Fastify adapter |
 | CLI | `references/cli-reference.md` | asapjs CLI commands, project scaffolding, code generation, build/deploy |
 | Gotchas | `references/gotchas.md` | Debugging, common mistakes, anti-patterns checklist |
+| Response DTO | (inline in SKILL.md) | Global Response DTO, @AutoInject, @ResponsePayload, config.response |
 
 ## Project Structure Template
 
 ```
 src/
+  common/
+    GlobalResponseDto.ts                # Project-wide response envelope (optional)
   {domain}/
     controller/{Domain}Controller.ts    # RouterController + @Get/@Post
     application/{Domain}Application.ts  # Pure TypeScript business logic
@@ -225,6 +229,57 @@ import config from './config';
 new Application(__dirname, config).run();
 ```
 
+### Global Response DTO (Express only)
+
+Wraps all route responses with a common envelope (timestamp, requestId, etc.) automatically.
+
+```typescript
+// src/common/GlobalResponseDto.ts
+import { TypeIs } from '@asapjs/schema';
+import { ExtendableDto } from '@asapjs/sequelize';
+import { AutoInject, ResponsePayload } from '@asapjs/router';
+
+export default class GlobalResponseDto extends ExtendableDto {
+  @TypeIs.INT({ comment: '응답 시각' })
+  @AutoInject(() => Date.now())
+  timestamp: number;
+
+  @TypeIs.STRING({ comment: '요청 ID' })
+  @AutoInject((req) => req.headers['x-request-id'] || crypto.randomUUID())
+  requestId: string;
+
+  @TypeIs.BOOLEAN({ comment: '성공 여부' })
+  @AutoInject(() => true)
+  success: boolean;
+
+  @ResponsePayload()  // route DTO goes here
+  result: any;
+}
+```
+
+```typescript
+// config.ts — wire it
+export default {
+  response: { responseDto: GlobalResponseDto },
+  // ...
+};
+```
+
+```typescript
+// Controller — return raw payload (NOT { result: data })
+@Get('/:id', { response: UserDto })
+public getUser = async ({ path }) => {
+  return await this.userService.info(path.id);
+};
+// Response: { timestamp: 1716..., requestId: "uuid", success: true, result: { id, name, ... } }
+```
+
+Modes:
+- **Designated**: `@ResponsePayload()` present → output wrapped in that key
+- **Spread**: no `@ResponsePayload()` → output spread with auto-inject fields (Swagger uses `allOf`)
+- **Override**: `public responseDto = CustomDto` on controller
+- **Disable**: `public responseDto = null` on controller → raw output, no envelope
+
 ## Do NOT (common AI hallucinations)
 
 - Do NOT use NestJS patterns (`@Controller`, `@Injectable`, `@Module`) — they don't exist
@@ -232,6 +287,7 @@ new Application(__dirname, config).run();
 - Do NOT use `@Column` decorator — use `TypeIs.*` decorators
 - Do NOT create DI containers — instantiate services directly in constructors
 - Do NOT call `res.json()` in handlers — return a value and Wrapper handles it
+- Do NOT wrap return values in `{ result: data }` when Global Response DTO is configured — return raw payload directly
 - Do NOT assume `page` is 1-based — it's 0-based (first page = 0)
 - Do NOT throw plain `new Error()` for client errors — use `error()` factory or `HttpException`
 - Do NOT mix Express and Fastify imports in the same controller
